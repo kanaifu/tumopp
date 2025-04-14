@@ -29,6 +29,11 @@ inline bool bernoulli(double p, URBG& engine) {
     return p >= 1.0 || (p > 0.0 && wtl::generate_canonical(engine) < p);
 }
 
+template <class URBG>
+inline double uniform(URBG& engine) {
+    return wtl::generate_canonical(engine);
+}
+
 class bernoulli_distribution {
   public:
     bernoulli_distribution(double p) noexcept: p_(p) {}
@@ -162,18 +167,30 @@ void Cell::set_cycle_dependent_death(urbg_t& engine, const double p) {
     next_event_ = bernoulli(p, engine) ? Event::death : Event::birth;
 }
 
-const char* Cell::header() {
-    return "x\ty\tz\tid\tancestor\t"
-           "birth\tdeath\tomega";
+const std::string Cell::header(unsigned ct_bins) {
+    std::string base = "x\ty\tz\tid\tancestor\t"
+                       "birth\tdeath\tomega";
+    for (int i = 0; i<ct_bins; i++) {
+        base += "\tbin" + std::to_string(i + 1);
+    }
+    return base;
 }
 
 std::ostream& Cell::write(std::ostream& ost) const {
-    return ost
-        << coord_[0] << "\t" << coord_[1] << "\t" << coord_[2] << "\t"
+    ost << coord_[0] << "\t" << coord_[1] << "\t" << coord_[2] << "\t"
         << id_ << "\t"
         << (ancestor_ ? ancestor_->id_ : 0u) << "\t"
         << time_of_birth_ << "\t" << time_of_death_ << "\t"
-        << static_cast<int>(proliferation_capacity_);
+        << static_cast<int>(proliferation_capacity_) << "\t";
+    
+    for (int idx = 0; idx<(int)cn_bins_.size(); idx++) {
+        ost << cn_bins_[idx];
+        if (idx < (int)cn_bins_.size() - 1) {
+            ost << "\t";
+        }
+    }
+
+    return ost;
 }
 
 std::ostream& Cell::traceback(std::ostream& ost, std::unordered_set<unsigned>* done) const {
@@ -187,6 +204,66 @@ std::ostream& Cell::traceback(std::ostream& ost, std::unordered_set<unsigned>* d
 //! Stream operator for debug print
 std::ostream& operator<< (std::ostream& ost, const Cell& x) {
     return x.write(ost);
+}
+
+//! Mutate the bins using a Markov chain process
+void Cell::mutate_bins(double weight, urbg_t& engine) {
+    // TODO: replace 10 with a CLI parameter
+    static double C[10][10];
+    static bool initialized = []() {
+        // Only called once during the entire run.
+        for (int n = 0; n < 10; n++) {
+            C[n][0] = 1.0;
+            for (int k = 1; k <= n; k++) {
+                C[n][k] = C[n - 1][k - 1] + C[n - 1][k];
+            }
+        }
+        return true;
+    }();
+
+    double rt = weight * event_rates_->cna_rate;
+    double factor = rt / (1.0 + rt);
+    for (unsigned idx = 0; idx<cn_bins_.size(); idx++) {
+        int j = cn_bins_[idx];
+        // Probabilities
+        std::vector<double> p(10, 0.0);
+        if (j == 0) {
+            p[0] = 1.0;
+        } else if (j == 1) {
+            p[0] = factor;
+            for (int i = 1; i < 10; i++) {
+                p[i] = pow(rt, i - 1.0) * pow(1.0 + rt, i + 1.0);
+            }
+        } else {
+            p[0] = pow(factor, j);
+            for (int i = 1; i < 10; i++) {
+                double binom_sum = 0.0;
+                for (int k = 1; k <= std::min(i, j); k++) {
+                    binom_sum += C[i][k] * C[j - 1][k - 1] * pow(rt, -2.0 * k);
+                }
+                p[i] = pow(factor, (double)(i + j)) * binom_sum; 
+            }
+        }
+
+        // Now normalize and sample
+        double sum = 0.0;
+        for (double &val : p)
+            sum += val;
+        for (double &val : p)
+            val = val / sum;
+
+        double point = uniform(engine);
+        
+        for (int i = 0; i < 10; i++) {
+            if (point > p[i]) {
+                point -= p[i];
+            } else {
+                // Found a sample
+                cn_bins_[idx] = i;
+                break;
+            }
+        }
+    }
 }
 
 } // namespace tumopp

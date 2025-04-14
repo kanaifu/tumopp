@@ -26,6 +26,10 @@ enum class Event: uint_fast8_t {
 /*! @ingroup params
 */
 struct EventRates {
+    //! \f$m\f$
+    unsigned bin_count = 10;
+    //! \f$r\f$
+    double cna_rate = 1.0;
     //! \f$\beta\f$
     double birth_rate = 1.0;
     //! \f$\delta\f$
@@ -83,7 +87,10 @@ class Cell {
     //! Constructor for first cells
     Cell(const coord_t& v, unsigned i,
          std::shared_ptr<EventRates> er=std::make_shared<EventRates>()) noexcept:
-      event_rates_(er), coord_(v), id_(i) {}
+      event_rates_(er), coord_(v), id_(i) {
+        // Assign just 2's at beginning, as this is the root.
+        cn_bins_.assign(er->bin_count, 2);
+    }
     //! Copy constructor
     Cell(const Cell& other) noexcept:
       ancestor_(other.ancestor_),
@@ -91,7 +98,8 @@ class Cell {
       time_of_birth_(other.time_of_birth_),
       coord_(other.coord_),
       id_(other.id_),
-      proliferation_capacity_(other.proliferation_capacity_) {}
+      proliferation_capacity_(other.proliferation_capacity_),
+      cn_bins_(other.cn_bins_) {}
     //! Destructor
     ~Cell() noexcept = default;
     //! Copy assignment operator
@@ -105,6 +113,8 @@ class Cell {
     std::string mutate(urbg_t&);
     //! driver mutation on all traits
     std::string force_mutate(urbg_t&);
+    //! mutate_cna according to vector
+    void mutate_bins(double weight, urbg_t& engine);
 
     //! Calc dt and set #next_event_
     double delta_time(urbg_t&, double now, double positional_value, bool surrounded=false);
@@ -154,10 +164,12 @@ class Cell {
     unsigned get_id() const noexcept {return id_;}
     //! Get #time_of_birth_
     double get_time_of_birth() const noexcept {return time_of_birth_;}
+    //! Get cn vector
+    std::vector<int> get_cn_bins() const noexcept {return cn_bins_;}
     //@}
 
     //! TSV header
-    static const char* header();
+    static const std::string header(unsigned ct_bins);
     //! TSV
     std::ostream& write(std::ostream& ost) const;
     //! Write TSV while tracing back #ancestor_ recursively
@@ -192,6 +204,8 @@ class Cell {
     int8_t proliferation_capacity_{-1};
     //! next event: birth, death, or migration
     Event next_event_{Event::birth};
+    //! CN vector
+    std::vector<int> cn_bins_;
 };
 
 } // namespace tumopp

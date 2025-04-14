@@ -46,6 +46,7 @@ inline clipp::group general_options(nlohmann::json* vm) {
     `-I,--interval`     | -              | -
     `-R,--record`       | -              | -
     `--seed`            | -              | -
+    `-r,--rate`         | -              | -
 */
 inline clipp::group simulation_options(nlohmann::json* vm) {
     const std::string OUT_DIR = wtl::strftime("tumopp_%Y%m%d_%H%M%S");
@@ -93,6 +94,8 @@ inline clipp::group simulation_options(nlohmann::json* vm) {
 
     Command line option | Symbol              | Variable                  |
     ------------------- | ------------------- | ------------------------- |
+    `--bincount`        | \f$m\f$             | EventRates::bin_count
+    `--rate`            | \f$r\f$             | EventRates::cna_rate
     `-b,--beta0`        | \f$\beta_0\f$       | EventRates::birth_rate
     `-d,--delta0`       | \f$\delta_0\f$      | EventRates::death_rate
     `-a,--alpha0`       | \f$\alpha_0\f$      | EventRates::death_prob
@@ -113,6 +116,10 @@ inline clipp::group simulation_options(nlohmann::json* vm) {
 inline clipp::group
 cell_options(nlohmann::json* vm, EventRates* init_event_rates, CellParams* cell_params) {
     return (
+      clippson::option(vm, {"bincount"}, &init_event_rates->bin_count,
+        "How many bins to model per cell"),
+      clippson::option(vm, {"rate"}, &init_event_rates->cna_rate,
+        "Rate of change of copy number evolution"),
       clippson::option(vm, {"b", "beta0"}, &init_event_rates->birth_rate, "Basic birth rate"),
       clippson::option(vm, {"d", "delta0"}, &init_event_rates->death_rate, "Basic death rate"),
       clippson::option(vm, {"a", "alpha0"}, &init_event_rates->death_prob,
@@ -195,7 +202,8 @@ void Simulation::run() {
             *init_event_rates_,
             seeder(),
             VM.at("verbose").get<bool>(),
-            VM.at("benchmark").get<bool>()
+            VM.at("benchmark").get<bool>(),
+            VM.at("bincount").get<unsigned>()
         );
         bool success = tissue_->grow(
             max_size,

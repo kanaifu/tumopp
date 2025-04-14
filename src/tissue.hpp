@@ -37,7 +37,8 @@ class Tissue {
       const EventRates& init_event_rates=EventRates{},
       uint32_t seed=std::random_device{}(),
       bool verbose=false,
-      bool enable_benchmark=false);
+      bool enable_benchmark=false, 
+      unsigned ct_bins=10);
     ~Tissue();
 
     //! main function
@@ -138,6 +139,9 @@ class Tissue {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
     // Data member
+
+    //! bin ct
+    unsigned ct_bins = 10;
 
     //! tree
     Tree phylo_tree_{};

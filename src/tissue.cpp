@@ -20,9 +20,11 @@ Tissue::Tissue(
   const EventRates& init_event_rates,
   const uint32_t seed,
   const bool verbose,
-  const bool enable_benchmark):
+  const bool enable_benchmark,
+  const unsigned ct_bins):
   engine_(std::make_unique<urbg_t>(seed)),
   verbose_(verbose) {
+    this->ct_bins = ct_bins;
     if (enable_benchmark) {
         benchmark_ = std::make_unique<Benchmark>();
         benchmark_->append(0u);
@@ -117,6 +119,8 @@ bool Tissue::grow(const size_t max_size, const double max_time,
                 
                 phylo_tree_.add_child(ancestor_id, mother->get_id(), dist);
                 phylo_tree_.add_child(ancestor_id, daughter->get_id(), dist);
+                mother->mutate_bins(dist, *engine_);
+                daughter->mutate_bins(dist, *engine_);
 
                 queue_push(mother);
                 queue_push(daughter);
@@ -359,7 +363,7 @@ void Tissue::entomb(const std::shared_ptr<Cell>& dead) {
 
 std::ostream& Tissue::write_history(std::ostream& ost) const {
     ost.precision(std::cout.precision());
-    ost << Cell::header() << "\n";
+    ost << Cell::header(ct_bins) << "\n";
     wtl::write_if_avail(ost, cemetery_.rdbuf());
     for (const auto& p: extant_cells_) {
         p->traceback(ost, &recorded_);
@@ -374,7 +378,7 @@ std::ostream& Tissue::write_tree(std::ostream& ost) const {
 }
 
 std::ostream& Tissue::write_snapshots(std::ostream& ost) const {
-    ost << "time\t" << Cell::header() << "\n";
+    ost << "time\t" << Cell::header(ct_bins) << "\n";
     wtl::write_if_avail(ost, snapshots_.rdbuf());
     return ost;
 }
