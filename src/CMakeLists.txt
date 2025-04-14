@@ -19,5 +19,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   coord.cpp
   simulation.cpp
   tissue.cpp
+  tree.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )

@@ -236,6 +236,11 @@ void Simulation::write() const {
         ofs.exceptions(std::ios_base::failbit | std::ios_base::badbit);
         tissue_->write_history(ofs);
     }
+    {
+        wtl::zlib::ofstream ofs{outdir / "tree.nwk.gz"};
+        ofs.exceptions(std::ios_base::failbit | std::ios_base::badbit);
+        tissue_->write_tree(ofs);
+    }
     if (tissue_->has_snapshots()) {
         wtl::zlib::ofstream ofs{outdir / "snapshots.tsv.gz"};
         ofs.exceptions(std::ios_base::failbit | std::ios_base::badbit);

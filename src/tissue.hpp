@@ -8,6 +8,7 @@
 #include "coord.hpp"
 #include "cell.hpp"
 #include "random.hpp"
+#include "tree.hpp"
 
 #include <cstdint>
 #include <sstream>
@@ -54,6 +55,8 @@ class Tissue {
 
     //! Write #extant_cells_ and their ancestors
     std::ostream& write_history(std::ostream&) const;
+    //! Write #phylo_tree in Newick form
+    std::ostream& write_tree(std::ostream&) const;
     //! Write #snapshots_
     std::ostream& write_snapshots(std::ostream&) const;
     //! Write #drivers_
@@ -135,6 +138,9 @@ class Tissue {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
     // Data member
+
+    //! tree
+    Tree phylo_tree_{};
 
     //! cells
     std::unordered_set<

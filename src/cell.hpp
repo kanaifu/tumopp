@@ -150,6 +150,10 @@ class Cell {
     Event next_event() const noexcept {return next_event_;}
     //! Get #coord_
     const coord_t& coord() const noexcept {return coord_;}
+    //! Get #id_
+    unsigned get_id() const noexcept {return id_;}
+    //! Get #time_of_birth_
+    double get_time_of_birth() const noexcept {return time_of_birth_;}
     //@}
 
     //! TSV header
@@ -163,7 +167,7 @@ class Cell {
     //! Set #PARAM_
     static void param(const param_type& p);
     //! Get #PARAM_
-    static const param_type& param() {return PARAM_;}
+    static const param_type& param() {return PARAM_;}    
 
   private:
     //! Parameters shared among instances

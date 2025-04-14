@@ -39,11 +39,17 @@ Tissue::Tissue(
     extant_cells_.insert(origin);
     while (extant_cells_.size() < initial_size) {
         for (const auto& mother: extant_cells_) {
+            unsigned ancestor_id = mother->get_id();
+            
             const auto daughter = std::make_shared<Cell>(*mother);
             const auto ancestor = std::make_shared<Cell>(*mother);
             ancestor->set_time_of_death(0.0);
             mother->set_time_of_birth(0.0, ++id_tail_, ancestor);
             daughter->set_time_of_birth(0.0, ++id_tail_, ancestor);
+            
+            phylo_tree_.add_child(ancestor_id, mother->get_id(), 0.0);
+            phylo_tree_.add_child(ancestor_id, daughter->get_id(), 0.0);
+
             daughter->set_coord(initial_coords[extant_cells_.size()]);
             extant_cells_.insert(daughter);
             if (extant_cells_.size() >= initial_size) break;
@@ -95,6 +101,9 @@ bool Tissue::grow(const size_t max_size, const double max_time,
             const auto daughter = std::make_shared<Cell>(*mother);
             if (insert(daughter)) {
                 const auto ancestor = std::make_shared<Cell>(*mother);
+                unsigned ancestor_id = ancestor->get_id();
+                double dist = time_ - ancestor->get_time_of_birth();
+
                 ancestor->set_time_of_death(time_);
                 mother->set_time_of_birth(time_, ++id_tail_, ancestor);
                 daughter->differentiate(*engine_);
@@ -105,6 +114,10 @@ bool Tissue::grow(const size_t max_size, const double max_time,
                     mutation_timing = 0u; // once
                     drivers_ << daughter->force_mutate(*engine_);
                 }
+                
+                phylo_tree_.add_child(ancestor_id, mother->get_id(), dist);
+                phylo_tree_.add_child(ancestor_id, daughter->get_id(), dist);
+
                 queue_push(mother);
                 queue_push(daughter);
                 const auto size = extant_cells_.size();
@@ -351,6 +364,12 @@ std::ostream& Tissue::write_history(std::ostream& ost) const {
     for (const auto& p: extant_cells_) {
         p->traceback(ost, &recorded_);
     }
+    return ost;
+}
+
+std::ostream& Tissue::write_tree(std::ostream& ost) const {
+    // 1 is the progenitor cell
+    ost << phylo_tree_.get_subtree(1, 0.0) << "\n";
     return ost;
 }
 
