@@ -20,6 +20,10 @@ std::string Tree::get_subtree_(unsigned id_, double par_dist) const {
         // Node might have children.
         for (auto &[child_id_, dist] : tree[id_]) {
             newick += get_subtree_(child_id_, dist);
+            newick += ",";
+        }
+        if (newick.back() == ',') {
+            newick.pop_back();
         }
     }
     if (newick.size() > 1) {
